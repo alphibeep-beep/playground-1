@@ -96,10 +96,11 @@ class Settlement:
         bonus = sum(level * 5 for level in self.structures.values())
         return base + bonus
 
-    def improve_structure(self, structure: str) -> int:
+    def improve_structure(self, structure: str, blueprint: StructureBlueprint | None = None) -> int:
         current = self.structures.get(structure, 0) + 1
         self.structures[structure] = current
-        self.prosperity += 1
+        bonus = blueprint.prosperity_bonus if blueprint else 1
+        self.prosperity += bonus
         return current
 
     def recruit(self, template: UnitTemplate, quantity: int = 1) -> List[Unit]:
@@ -148,3 +149,37 @@ def army_from_templates(name: str, template_names: Iterable[str]) -> Army:
             raise KeyError(f"Unknown unit template: {tpl_name}")
         army.add_unit(Unit(template=templates[tpl_name]))
     return army
+
+
+def default_structures() -> Dict[str, StructureBlueprint]:
+    """Return the default structures available for construction."""
+
+    return {
+        "trading_post": StructureBlueprint(
+            name="Trading Post",
+            cost=75,
+            description="Boosts commerce and opens caravan routes for extra income.",
+            prosperity_bonus=2,
+        ),
+        "watchtower": StructureBlueprint(
+            name="Watchtower",
+            cost=60,
+            description="Increases defenses and keeps raiders at bay.",
+            prosperity_bonus=1,
+        ),
+        "rail_depot": StructureBlueprint(
+            name="Rail Depot",
+            cost=120,
+            description="Connects the town to the rail network, enabling rapid expansion.",
+            prosperity_bonus=3,
+        ),
+    }
+@dataclass(frozen=True)
+class StructureBlueprint:
+    """Definition of an upgradable settlement structure."""
+
+    name: str
+    cost: int
+    description: str
+    prosperity_bonus: int = 1
+
