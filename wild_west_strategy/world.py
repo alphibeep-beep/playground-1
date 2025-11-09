@@ -4,7 +4,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Dict, List, Optional
 
-from .entities import Army, Settlement
+from .entities import Army, Settlement, default_templates
 
 
 @dataclass
@@ -27,6 +27,9 @@ class Faction:
 
     def pay_upkeep(self) -> None:
         upkeep_cost = sum(army.upkeep() for army in self.armies.values())
+        upkeep_cost += sum(
+            territory.settlement.garrison.upkeep() for territory in self.territories.values()
+        )
         self.treasury = max(0, self.treasury - upkeep_cost)
 
     def reinforce_garrisons(self) -> None:
@@ -84,35 +87,71 @@ class World:
 
 
 def create_default_world() -> World:
-    """Create a compact default scenario for demonstration and testing."""
+    """Create the default campaign map with vibrant frontier settlements."""
 
     dry_gulch = Territory(
         name="Dry Gulch",
         settlement=Settlement(name="Dry Gulch", population=1200, prosperity=3, defenses=5),
-        neighbors=["Copper Ridge"],
+        neighbors=["Copper Ridge", "Mesa Verde"],
         controlling_faction="Frontier League",
     )
     copper_ridge = Territory(
         name="Copper Ridge",
-        settlement=Settlement(name="Copper Ridge", population=900, prosperity=2, defenses=4),
-        neighbors=["Dry Gulch", "Riverbend"],
+        settlement=Settlement(name="Copper Ridge", population=950, prosperity=3, defenses=4),
+        neighbors=["Dry Gulch", "Riverbend", "Mesa Verde", "Silver Springs"],
+        controlling_faction="Frontier League",
+    )
+    mesa_verde = Territory(
+        name="Mesa Verde",
+        settlement=Settlement(name="Mesa Verde", population=800, prosperity=2, defenses=4),
+        neighbors=["Dry Gulch", "Copper Ridge", "Silver Springs"],
         controlling_faction="Frontier League",
     )
     riverbend = Territory(
         name="Riverbend",
         settlement=Settlement(name="Riverbend", population=1500, prosperity=4, defenses=6),
-        neighbors=["Copper Ridge"],
+        neighbors=["Copper Ridge", "Silver Springs", "Lost Canyon"],
         controlling_faction="Desert Union",
     )
+    silver_springs = Territory(
+        name="Silver Springs",
+        settlement=Settlement(name="Silver Springs", population=1100, prosperity=3, defenses=5),
+        neighbors=["Mesa Verde", "Copper Ridge", "Riverbend", "Lost Canyon"],
+        controlling_faction="Desert Union",
+    )
+    lost_canyon = Territory(
+        name="Lost Canyon",
+        settlement=Settlement(name="Lost Canyon", population=700, prosperity=2, defenses=5),
+        neighbors=["Riverbend", "Silver Springs"],
+        controlling_faction="Canyon Syndicate",
+    )
 
-    frontier_league = Faction(name="Frontier League", treasury=500)
-    desert_union = Faction(name="Desert Union", treasury=450)
+    frontier_league = Faction(name="Frontier League", treasury=650)
+    desert_union = Faction(name="Desert Union", treasury=520)
+    canyon_syndicate = Faction(name="Canyon Syndicate", treasury=480)
 
-    frontier_league.add_territory(dry_gulch)
-    frontier_league.add_territory(copper_ridge)
-    desert_union.add_territory(riverbend)
+    for territory in [dry_gulch, copper_ridge, mesa_verde]:
+        frontier_league.add_territory(territory)
+    for territory in [riverbend, silver_springs]:
+        desert_union.add_territory(territory)
+    canyon_syndicate.add_territory(lost_canyon)
+
+    templates = default_templates()
+    dry_gulch.settlement.recruit(templates["militia"], 2)
+    copper_ridge.settlement.recruit(templates["militia"], 1)
+    copper_ridge.settlement.recruit(templates["cavalry"], 1)
+    mesa_verde.settlement.recruit(templates["militia"], 1)
+    riverbend.settlement.recruit(templates["militia"], 2)
+    riverbend.settlement.recruit(templates["artillery"], 1)
+    silver_springs.settlement.recruit(templates["militia"], 1)
+    lost_canyon.settlement.recruit(templates["militia"], 1)
 
     return World(
-        territories={t.name: t for t in [dry_gulch, copper_ridge, riverbend]},
-        factions={f.name: f for f in [frontier_league, desert_union]},
+        territories={
+            t.name: t
+            for t in [dry_gulch, copper_ridge, mesa_verde, riverbend, silver_springs, lost_canyon]
+        },
+        factions={
+            f.name: f for f in [frontier_league, desert_union, canyon_syndicate]
+        },
     )
